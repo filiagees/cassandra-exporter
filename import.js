@@ -17,6 +17,9 @@ var USER = process.env.USER;
 var PASSWORD = process.env.PASSWORD;
 var DIRECTORY = process.env.DIRECTORY || "./data";
 var USE_SSL = process.env.USE_SSL;
+var SSL_KEY = process.env.SSL_KEY;
+var SSL_CERT = process.env.SSL_CERT;
+var SSL_CA = process.env.SSL_CA;
 
 var authProvider;
 if (USER && PASSWORD) {
@@ -26,9 +29,23 @@ if (USER && PASSWORD) {
 var sslOptions;
 if (USE_SSL) {
     sslOptions = { rejectUnauthorized: false };
+
+    // see: https://docs.datastax.com/en/developer/nodejs-driver/4.6/features/tls/ 
+    // Necessary only if the server requires client certificate authentication.
+    if (SSL_KEY) {
+        sslOptions['key'] = fs.readFileSync(SSL_KEY); // eg: cliprivkey.pem
+    }
+    if (SSL_CERT) {
+        sslOptions['cert'] = fs.readFileSync(SSL_CERT); // eg: cliprivkey.pem
+    }
+    
+    // Necessary only if the server uses a self-signed certificate.
+    if (SSL_CA) {
+        sslOptions['ca'] = [ fs.readFileSync(SSL_CA) ]; // eg: cacertbundle.pem
+    }
 }
 
-var systemClient = new cassandra.Client({contactPoints: [HOST], authProvider: authProvider, protocolOptions: {port: [PORT]}, sslOptions: sslOptions });
+var systemClient = new cassandra.Client({contactPoints: [HOST], authProvider: authProvider, protocolOptions: {port: [PORT]}, sslOptions: sslOptions, localDataCenter: "datacenter1"  });
 var client = new cassandra.Client({ contactPoints: [HOST], keyspace: KEYSPACE, authProvider: authProvider, protocolOptions: {port: [PORT]}, sslOptions: sslOptions });
 
 function buildTableQueryForDataRow(tableInfo, row) {
